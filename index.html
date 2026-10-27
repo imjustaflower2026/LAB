@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Direct File Distribution | Download file.zip</title>
+  <meta name="description" content="High-speed direct distribution server for file.zip. Optimized for curl, wget, and web browsers with Vercel Edge delivery.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 50%, #030712 100%);
+      --surface-1: rgba(255, 255, 255, 0.04);
+      --surface-2: rgba(255, 255, 255, 0.07);
+      --surface-border: rgba(255, 255, 255, 0.1);
+      --surface-border-glow: rgba(99, 102, 241, 0.4);
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --primary-glow: rgba(99, 102, 241, 0.35);
+      --accent: #06b6d4;
+      --accent-glow: rgba(6, 182, 212, 0.25);
+      --success: #10b981;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --code-bg: #0b0f19;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --radius-sm: 8px;
+      --transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg-gradient);
+      background-attachment: fixed;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 2.5rem 1.25rem 4rem;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* Ambient background lights */
+    .ambient-glow {
+      position: fixed;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(120px);
+      opacity: 0.4;
+    }
+    .ambient-1 {
+      top: -150px;
+      left: 20%;
+      background: radial-gradient(circle, #6366f1 0%, transparent 70%);
+    }
+    .ambient-2 {
+      top: 40%;
+      right: 15%;
+      background: radial-gradient(circle, #06b6d4 0%, transparent 70%);
+      opacity: 0.25;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 860px;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .badge-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 1rem;
+      border-radius: 9999px;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      margin-bottom: 1.25rem;
+    }
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 10px var(--success);
+      animation: pulse 2s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #ffffff 40%, #cbd5e1 70%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.75rem;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Primary Hero Card */
+    .card {
+      background: var(--surface-1);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius-lg);
+      padding: 2.25rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--primary), var(--accent), transparent);
+    }
+
+    .card:hover {
+      border-color: var(--surface-border-glow);
+    }
+
+    .file-details-grid {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 1.5rem;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 640px) {
+      .file-details-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+    }
+
+    .file-icon-box {
+      width: 72px;
+      height: 72px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.15));
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px var(--primary-glow);
+      margin: 0 auto;
+    }
+
+    .file-icon-box svg {
+      width: 36px;
+      height: 36px;
+      stroke: #818cf8;
+    }
+
+    .file-info h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    @media (max-width: 640px) {
+      .file-info h2 {
+        justify-content: center;
+      }
+    }
+
+    .file-tag {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+      border-radius: 9999px;
+      font-weight: 600;
+    }
+
+    .file-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-top: 0.4rem;
+    }
+
+    @media (max-width: 640px) {
+      .file-meta-row {
+        justify-content: center;
+      }
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .meta-item svg {
+      width: 16px;
+      height: 16px;
+      stroke: var(--text-dim);
+    }
+
+    /* Action Buttons */
+    .actions-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      background: linear-gradient(135deg, var(--primary) 0%, #4338ca 100%);
+      color: #ffffff;
+      padding: 1.1rem 2rem;
+      border-radius: var(--radius-md);
+      font-size: 1.1rem;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 10px 25px -5px var(--primary-glow), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+      transition: var(--transition);
+      cursor: pointer;
+      border: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 30px -5px rgba(99, 102, 241, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+      background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-primary svg {
+      width: 22px;
+      height: 22px;
+      stroke: #fff;
+      transition: transform 0.2s ease;
+    }
+
+    .btn-primary:hover svg {
+      transform: translateY(2px);
+    }
+
+    .route-links {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      margin-top: 0.25rem;
+    }
+
+    .route-links a {
+      color: #818cf8;
+      text-decoration: none;
+      transition: color 0.15s ease;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      background: rgba(99, 102, 241, 0.08);
+      padding: 0.25rem 0.6rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+    }
+
+    .route-links a:hover {
+      color: #c7d2fe;
+      background: rgba(99, 102, 241, 0.18);
+    }
+
+    /* CLI & Terminal Section */
+    .cli-section {
+      background: var(--surface-1);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .section-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .section-title svg {
+      width: 20px;
+      height: 20px;
+      stroke: var(--accent);
+    }
+
+    /* Tabs */
+    .tabs-nav {
+      display: flex;
+      gap: 0.5rem;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.3rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.4rem 0.9rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: var(--transition);
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: #fff;
+    }
+
+    .tab-btn.active {
+      background: rgba(99, 102, 241, 0.25);
+      color: #c7d2fe;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    /* Code Snippet Box */
+    .code-box {
+      position: relative;
+      background: var(--code-bg);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-md);
+      padding: 1.1rem 1.25rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.92rem;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+    }
+
+    .code-content {
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: thin;
+      padding-bottom: 2px;
+      color: #a5f3fc;
+    }
+
+    .code-content .cmd-token {
+      color: #f43f5e;
+      font-weight: 600;
+    }
+
+    .code-content .flag-token {
+      color: #fbbf24;
+    }
+
+    .code-content .url-token {
+      color: #38bdf8;
+    }
+
+    .copy-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-muted);
+      border-radius: var(--radius-sm);
+      padding: 0.45rem 0.85rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: var(--transition);
+      flex-shrink: 0;
+    }
+
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .copy-btn.copied {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+
+    .copy-btn svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+    }
+
+    /* Verification & Specs Grid */
+    .specs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .spec-item {
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .spec-label {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .spec-val {
+      font-size: 0.95rem;
+      color: #f1f5f9;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      word-break: break-all;
+    }
+
+    /* Deployment Accordion */
+    .deploy-section {
+      background: var(--surface-1);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+    }
+
+    .deploy-header {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .deploy-header svg {
+      width: 20px;
+      height: 20px;
+      stroke: #c084fc;
+    }
+
+    .deploy-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .step-item {
+      display: flex;
+      gap: 0.85rem;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      color: #a5b4fc;
+      font-size: 0.8rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.15rem;
+    }
+
+    .step-text code {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fbcfe8;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-glow ambient-1"></div>
+  <div class="ambient-glow ambient-2"></div>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="badge-bar">
+        <span class="badge-dot"></span>
+        <span>Vercel Edge CDN Ready &bull; Direct Static Routing</span>
+      </div>
+      <h1>High-Speed File Server</h1>
+      <p class="subtitle">Direct CDN-accelerated delivery for archives. Fully compatible with automated scripts, curl, wget, and modern browsers.</p>
+    </header>
+
+    <!-- Primary File Card -->
+    <main class="card">
+      <div class="file-details-grid">
+        <div class="file-icon-box">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+          </svg>
+        </div>
+
+        <div class="file-info">
+          <h2>
+            file.zip
+            <span class="file-tag">ZIP Archive</span>
+          </h2>
+          <div class="file-meta-row">
+            <span class="meta-item">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 4 4 5 4 7z" />
+              </svg>
+              <strong>9.50 MB</strong> (9,961,625 bytes)
+            </span>
+            <span class="meta-item">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Fast Range &amp; Resume Support
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <!-- Right side status indicator -->
+        </div>
+      </div>
+
+      <div class="actions-container">
+        <a id="main-download-btn" href="/zip" class="btn-primary" download="file.zip">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          Download file.zip
+        </a>
+
+        <div class="route-links">
+          <span>Direct Routes:</span>
+          <a href="/zip" id="link-zip">/zip</a>
+          <a href="/file.zip" id="link-filezip">/file.zip</a>
+          <a href="/download" id="link-download">/download</a>
+        </div>
+      </div>
+    </main>
+
+    <!-- CLI Terminal Code Snippets -->
+    <section class="cli-section">
+      <div class="section-title-row">
+        <div class="section-title">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 3-3 3m4.5 0h4.5M3 5.25h18a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25H3A2.25 2.25 0 01.75 16.5v-9A2.25 2.25 0 013 5.25z" />
+          </svg>
+          Command Line Download (cURL / wget)
+        </div>
+
+        <div class="tabs-nav">
+          <button class="tab-btn active" onclick="switchCliTab('curl-zip', this)">curl /zip</button>
+          <button class="tab-btn" onclick="switchCliTab('curl-file', this)">curl /file.zip</button>
+          <button class="tab-btn" onclick="switchCliTab('wget-zip', this)">wget</button>
+          <button class="tab-btn" onclick="switchCliTab('powershell', this)">PowerShell</button>
+        </div>
+      </div>
+
+      <div class="code-box">
+        <div class="code-content" id="cli-command-display">
+          <span class="cmd-token">curl</span> <span class="flag-token">-L</span> "<span class="url-token" id="cli-url">https://your-domain.vercel.app/zip</span>" <span class="flag-token">-o</span> file.zip
+        </div>
+        <button class="copy-btn" id="copy-btn" onclick="copyCurrentCommand()" title="Copy command">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+          </svg>
+          <span id="copy-text">Copy</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Technical Specs & Integrity -->
+    <div class="specs-grid">
+      <div class="spec-item">
+        <span class="spec-label">Content-Type</span>
+        <span class="spec-val">application/zip</span>
+      </div>
+      <div class="spec-item">
+        <span class="spec-label">Content-Disposition</span>
+        <span class="spec-val">attachment; filename="file.zip"</span>
+      </div>
+      <div class="spec-item">
+        <span class="spec-label">Edge Cache</span>
+        <span class="spec-val">public, max-age=31536000</span>
+      </div>
+      <div class="spec-item">
+        <span class="spec-label">SHA-256 Checksum</span>
+        <span class="spec-val" style="font-size: 0.78rem;">a46f5e903fcedbe0f8dca143dc7fac7e3eb1226141c046173951b6f5c1c0a45d</span>
+      </div>
+    </div>
+
+    <!-- Vercel Deployment Instructions -->
+    <section class="deploy-section">
+      <div class="deploy-header">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.458m8.217-3.442a15.09 15.09 0 01-2.458 2.448" />
+        </svg>
+        Instant Vercel Deployment (2 Steps)
+      </div>
+
+      <div class="deploy-steps">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>Method A (CLI):</strong> Open terminal in this folder and run <code>npx vercel</code>. Follow the prompts (press Enter for defaults).
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>Method B (Git):</strong> Push this directory to GitHub, open <a href="https://vercel.com/new" target="_blank" style="color: #818cf8;">vercel.com/new</a>, import the repo, and click <strong>Deploy</strong>. No build settings or framework configurations needed!
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Direct Edge File Distribution Hub &bull; Powered by Vercel Static CDN
+    </footer>
+  </div>
+
+  <script>
+    // Dynamically detect origin (e.g. https://your-site.vercel.app or localhost)
+    const baseOrigin = window.location.origin.includes('http') 
+      ? window.location.origin 
+      : 'https://your-domain.vercel.app';
+
+    const commands = {
+      'curl-zip': `curl -L "${baseOrigin}/zip" -o file.zip`,
+      'curl-file': `curl -L "${baseOrigin}/file.zip" -o file.zip`,
+      'wget-zip': `wget "${baseOrigin}/zip" -O file.zip`,
+      'powershell': `Invoke-WebRequest -Uri "${baseOrigin}/zip" -OutFile "file.zip"`
+    };
+
+    let activeKey = 'curl-zip';
+
+    function renderCommand() {
+      const display = document.getElementById('cli-command-display');
+      if (activeKey === 'curl-zip') {
+        display.innerHTML = `<span class="cmd-token">curl</span> <span class="flag-token">-L</span> "<span class="url-token">${baseOrigin}/zip</span>" <span class="flag-token">-o</span> file.zip`;
+      } else if (activeKey === 'curl-file') {
+        display.innerHTML = `<span class="cmd-token">curl</span> <span class="flag-token">-L</span> "<span class="url-token">${baseOrigin}/file.zip</span>" <span class="flag-token">-o</span> file.zip`;
+      } else if (activeKey === 'wget-zip') {
+        display.innerHTML = `<span class="cmd-token">wget</span> "<span class="url-token">${baseOrigin}/zip</span>" <span class="flag-token">-O</span> file.zip`;
+      } else if (activeKey === 'powershell') {
+        display.innerHTML = `<span class="cmd-token">Invoke-WebRequest</span> <span class="flag-token">-Uri</span> "<span class="url-token">${baseOrigin}/zip</span>" <span class="flag-token">-OutFile</span> "file.zip"`;
+      }
+    }
+
+    function switchCliTab(key, btn) {
+      activeKey = key;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderCommand();
+    }
+
+    function copyCurrentCommand() {
+      const cmd = commands[activeKey];
+      navigator.clipboard.writeText(cmd).then(() => {
+        const copyBtn = document.getElementById('copy-btn');
+        const copyText = document.getElementById('copy-text');
+        copyBtn.classList.add('copied');
+        copyText.textContent = 'Copied!';
+        setTimeout(() => {
+          copyBtn.classList.remove('copied');
+          copyText.textContent = 'Copy';
+        }, 2000);
+      });
+    }
+
+    // Initialize display with dynamic URL
+    renderCommand();
+  </script>
+</body>
+</html>
